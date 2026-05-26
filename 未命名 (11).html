@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>足球約波管理系統 - 場地日期篩選</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft JhengHei", "Microsoft YaHei", sans-serif;
+        }
+
+        body {
+            background: #f5f7fa;
+            padding: 15px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .title {
+            text-align: center;
+            padding: 10px 0;
+            color: #2c3e50;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .tab-bar {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+            background: white;
+            padding: 8px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            background: #eee;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+
+        .tab.active {
+            background: #3498db;
+            color: white;
+        }
+
+        .page { display: none; }
+        .page.show { display: block; }
+
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .card h2 {
+            font-size: 18px;
+            color: #3498db;
+            margin-bottom: 10px;
+        }
+
+        input, textarea, button, select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover { background: #2980b9; }
+        .del-btn { background: #e74c3c; padding: 4px 6px; font-size: 12px; }
+
+        .list { max-height: 220px; overflow-y: auto; }
+        .item { padding: 6px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+
+        .notice-bar {
+            background: #fff3cd; border-left: 5px solid #ffc107;
+            padding: 10px; border-radius: 6px; margin-bottom: 10px; font-size: 14px;
+        }
+
+        .week-place {
+            background: #e3f2fd;
+            border-left: 5px solid #2196f3;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 15px;
+            line-height: 1.6;
+            white-space: pre-line;
+        }
+
+        .stats { display: flex; gap: 5px; margin: 10px 0; }
+        .stat { flex: 1; background: #ecf0f1; padding: 8px; text-align: center; border-radius: 6px; }
+        .team-bar { display: flex; gap: 5px; margin-bottom: 10px; }
+
+        .filter-group {
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-size:13px;
+        }
+        .filter-row {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 5px;
+            flex-wrap:wrap;
+        }
+        .filter-row input, .filter-row select {
+            flex:1;
+            min-width:100px;
+            margin-bottom:0;
+        }
+    </style>
+</head>
+<body>
+
+<h1 class="title">⚽ 足球約波管理系統</h1>
+
+<div class="tab-bar">
+    <div class="tab active" onclick="switchTab(0)">主頁</div>
+    <div class="tab" onclick="switchTab(1)">球員管理</div>
+    <div class="tab" onclick="switchTab(2)">收支記錄</div>
+    <div class="tab" onclick="switchTab(3)">球隊設定</div>
+</div>
+
+<!-- ====================== 主頁 ====================== -->
+<div class="page show" id="page0">
+    <div class="notice-bar" id="topNotice">載入通知中...</div>
+
+    <div class="card">
+        <h2>📅 本週報名</h2>
+        <div class="week-place" id="weekPlace">未設定本週場地</div>
+        
+        <!-- 🔥 你要的：場地 + 日期 篩選 -->
+        <div class="filter-group">
+            <div class="filter-row">
+                <input type="text" id="fPlayer" placeholder="球員名" oninput="renderWeek()">
+                <input type="date" id="fFilterDate" placeholder="揀日期" onchange="renderWeek()">
+                <select id="fFilterPlace" placeholder="揀場地" onchange="renderWeek()">
+                    <option value="">全部場地</option>
+                </select>
+            </div>
+            <div class="filter-row">
+                <select id="fAttendStatus" onchange="renderWeek()">
+                    <option value="all">全部</option>
+                    <option value="attended">已出席</option>
+                    <option value="notAttended">未出席</option>
+                </select>
+            </div>
+        </div>
+
+        <select id="selectUser"></select>
+        <button onclick="addWeekPlayer()">確認報名</button>
+        <button onclick="clearWeek()" style="background:#e67e22;">清空本週</button>
+        <div class="list" id="playerList"></div>
+    </div>
+
+    <div class="card">
+        <h2>✅ 出席記錄</h2>
+        <div class="filter-group">
+            <div class="filter-row">
+                <input type="text" id="fAttend" placeholder="球員名" oninput="renderAttend()">
+                <input type="date" id="fAttendStart" onchange="renderAttend()">
+                <input type="date" id="fAttendEnd" onchange="renderAttend()">
+            </div>
+        </div>
+
+        <select id="selectAttend"></select>
+        <button onclick="addAttendance()">記錄出席</button>
+        <div class="stats">
+            <div class="stat">報名<br><b id="total">0</b></div>
+            <div class="stat">出席<br><b id="attend">0</b></div>
+            <div class="stat">率<br><b id="rate">0%</b></div>
+        </div>
+        <div class="list" id="attendList"></div>
+    </div>
+</div>
+
+<!-- ====================== 球員管理 ====================== -->
+<div class="page" id="page1">
+    <div class="card">
+        <h2>👤 球員管理</h2>
+        <div class="filter-group">
+            <div class="filter-row">
+                <input type="text" id="fUser" placeholder="球員名" oninput="renderUser()">
+                <select id="fAttendCount" onchange="renderUser()">
+                    <option value="all">全部出席</option>
+                    <option value="high">≥5次</option>
+                    <option value="mid">1-4次</option>
+                    <option value="zero">0次</option>
+                </select>
+            </div>
+        </div>
+
+        <input type="text" id="userName" placeholder="輸入球員姓名">
+        <button onclick="addUser()">新增球員</button>
+        <div class="list" id="userList"></div>
+    </div>
+
+    <div class="card">
+        <h2>📢 通知</h2>
+        <div class="filter-group">
+            <div class="filter-row">
+                <input type="text" id="fNotice" placeholder="搜尋通知" oninput="renderNotice()">
+                <input type="date" id="fNoticeDate" onchange="renderNotice()">
+            </div>
+        </div>
+
+        <input type="text" id="noticeTitle" placeholder="標題">
+        <textarea rows="2" id="noticeContent" placeholder="內容"></textarea>
+        <button onclick="addNotice()">發布通知</button>
+        <div class="list" id="noticeList"></div>
+    </div>
+</div>
+
+<!-- ====================== 收支記錄 ====================== -->
+<div class="page" id="page2">
+    <div class="card">
+        <h2>💰 收支管理</h2>
+        
+        <div class="filter-group">
+            <div class="filter-row">
+                <select id="fFinanceType"><option value="all">全部</option><option value="in">收入</option><option value="out">支出</option></select>
+                <input type="text" id="fFinanceText" placeholder="項目" oninput="renderFinance()">
+            </div>
+            <div class="filter-row">
+                <input type="number" id="fFinanceMin" placeholder="最低金額" oninput="renderFinance()">
+                <input type="number" id="fFinanceMax" placeholder="最高金額" oninput="renderFinance()">
+            </div>
+            <div class="filter-row">
+                <input type="date" id="fFinanceStart" onchange="renderFinance()">
+                <input type="date" id="fFinanceEnd" onchange="renderFinance()">
+            </div>
+        </div>
+
+        <input type="text" id="financeTitle" placeholder="項目">
+        <input type="number" id="financeAmount" placeholder="收入+ 支出-">
+        <button onclick="addFinance()">儲存記錄</button>
+        <div style="font-weight:bold; margin:10px 0;">總結餘：<span style="color:green" id="balance">$0</span></div>
+        <div class="list" id="financeList"></div>
+    </div>
+</div>
+
+<!-- ====================== 球隊設定 ====================== -->
+<div class="page" id="page3">
+    <div class="card">
+        <h2>🏠 球隊管理</h2>
+        <div class="team-bar">
+            <select id="teamSelect" style="flex:2"></select>
+            <button onclick="addTeam()">新增</button>
+            <button onclick="delTeam()" style="background:#e74c32;">刪除</button>
+        </div>
+        <input type="text" id="newTeamName" placeholder="新球隊名稱">
+    </div>
+
+    <div class="card">
+        <h2>📍 本週球場BOOKING</h2>
+        <input type="text" id="placeName" placeholder="場地名稱">
+        <input type="date" id="placeDate">
+        <input type="text" id="placeTime" placeholder="時間（例：20:00-22:00）">
+        <input type="number" id="placeFee" placeholder="費用（每人）">
+        <button onclick="saveWeekBooking()">💾 儲存本週場地</button>
+    </div>
+</div>
+
+
+<script>
+function get(k) { return JSON.parse(localStorage.getItem(k)) || [] }
+function set(k, d) { localStorage.setItem(k, JSON.stringify(d)) }
+function getStr(k) { return localStorage.getItem(k) || "" }
+function setStr(k, v) { localStorage.setItem(k, v) }
+
+let currentTeam = getStr("currentTeam") || "預設球隊";
+
+// === 分頁 ===
+function switchTab(i) {
+    document.querySelectorAll('.tab').forEach((x,n)=>x.classList.toggle('active',n===i));
+    document.querySelectorAll('.page').forEach((x,n)=>x.classList.toggle('show',n===i));
+}
+
+// === 球隊 ===
+function renderTeam(){
+    let t=get("teams");if(t.length===0){t=["預設球隊"];set("teams",t);}
+    let s=document.getElementById("teamSelect");s.innerHTML="";
+    t.forEach(x=>s.innerHTML+=`<option value="${x}" ${x==currentTeam?"selected":""}>${x}</option>`);
+}
+function changeTeam(){currentTeam=document.getElementById("teamSelect").value;setStr("currentTeam",currentTeam);initAll();}
+function addTeam(){
+    let n=document.getElementById("newTeamName").value.trim();if(!n)return alert("輸入名稱");
+    let t=get("teams");if(t.includes(n))return alert("已存在");
+    t.push(n);set("teams",t);document.getElementById("newTeamName").value="";renderTeam();
+}
+function delTeam(){
+    if(currentTeam=="預設球隊")return alert("不能刪除");
+    if(!confirm("刪除所有資料？"))return;
+    let teams=get("teams").filter(x=>x!=currentTeam);set("teams",teams);
+    currentTeam="預設球隊";setStr("currentTeam",currentTeam);initAll();
+}
+
+// === 通知 ===
+function renderNotice(){
+    let list=get("notice_"+currentTeam);
+    let kw=document.getElementById("fNotice").value.toLowerCase();
+    let date=document.getElementById("fNoticeDate").value;
+    let dom=document.getElementById("noticeList");dom.innerHTML="";
+    list=list.filter(x=>{
+        let matchKw=x.title.toLowerCase().includes(kw)||x.content.toLowerCase().includes(kw);
+        let matchDate=!date||x.time.startsWith(date);
+        return matchKw&&matchDate;
+    });
+    list.slice(-5).reverse().forEach((x,i)=>{
+        dom.innerHTML+=`<div class="item"><div>${x.time}<br><b>${x.title}</b><br>${x.content}</div><button class="del-btn" onclick="delNotice(${list.length-1-i})">刪</button></div>`;
+    });
+    let top=document.getElementById("topNotice");
+    if(list.length===0)top.innerText="📢 暫無通知";
+    else{let l=list[list.length-1];top.innerHTML=`<b>【${l.title}】</b><br>${l.content}<br>${l.time}`;}
+}
+function addNotice(){
+    let t=document.getElementById("noticeTitle").value.trim();let c=document.getElementById("noticeContent").value.trim();if(!t||!c)return alert("填寫完整");
+    let list=get("notice_"+currentTeam);list.push({title:t,content:c,time:new Date().toLocaleString()});set("notice_"+currentTeam,list);
+    document.getElementById("noticeTitle").value="";document.getElementById("noticeContent").value="";renderNotice();
+}
+function delNotice(i){let list=get("notice_"+currentTeam);list.splice(i,1);set("notice_"+currentTeam,list);renderNotice();}
+
+// === 球員 ===
+function renderUser(){
+    let users=get("users_"+currentTeam);
+    let kw=document.getElementById("fUser").value.toLowerCase();
+    let attType=document.getElementById("fAttendCount").value;
+    let hist=get("attend_"+currentTeam);
+    let dom=document.getElementById("userList");dom.innerHTML="";
+    
+    users=users.filter(u=>{
+        let cnt=hist.filter(x=>x.name==u.name).length;
+        let matchKw=u.name.toLowerCase().includes(kw);
+        let matchAtt=true;
+        if(attType=="high")matchAtt=cnt>=5;
+        if(attType=="mid")matchAtt=cnt>=1&&cnt<=4;
+        if(attType=="zero")matchAtt=cnt==0;
+        return matchKw&&matchAtt;
+    });
+
+    users.forEach((u,i)=>{
+        let cnt=hist.filter(x=>x.name==u.name).length;
+        dom.innerHTML+=`<div class="item"><span>${u.name}</span><span>出席：${cnt}次</span><button class="del-btn" onclick="delUser(${i})">刪</button></div>`;
+    });
+    updateSelect();
+}
+function addUser(){
+    let name=document.getElementById("userName").value.trim();if(!name)return alert("輸入姓名");
+    let users=get("users_"+currentTeam);if(users.some(x=>x.name==name))return alert("已存在");
+    users.push({name:name});set("users_"+currentTeam,users);document.getElementById("userName").value="";renderUser();
+}
+function delUser(i){let users=get("users_"+currentTeam);users.splice(i,1);set("users_"+currentTeam,users);renderUser();}
+function updateSelect(){
+    let users=get("users_"+currentTeam);
+    let s1=document.getElementById("selectUser");let s2=document.getElementById("selectAttend");
+    s1.innerHTML=s2.innerHTML=`<option value="">選擇球員</option>`;
+    users.forEach(u=>{s1.innerHTML+=`<option value="${u.name}">${u.name}</option>`;s2.innerHTML+=`<option value="${u.name}">${u.name}</option>`;});
+}
+
+// === 場地BOOKING ===
+function loadWeekPlace() {
+    let data = get("weekBookingData_" + currentTeam);
+    let dom = document.getElementById("weekPlace");
+    if (!data || !data.name) {
+        dom.innerText = "📢 未設定本週場地";
+        return;
+    }
+    let text = `📅 日期：${data.date || ""}\n📍 場地：${data.name || ""}\n⏰ 時間：${data.time || ""}\n💰 費用：$${data.fee || "0"}/人`;
+    dom.innerText = text;
+}
+
+function saveWeekBooking() {
+    let name = document.getElementById("placeName").value.trim();
+    let date = document.getElementById("placeDate").value;
+    let time = document.getElementById("placeTime").value.trim();
+    let fee = document.getElementById("placeFee").value.trim();
+    if (!name) return alert("請輸入場地名稱");
+    
+    let allBooks = get("allBookingHistory");
+    let newBook = { team: currentTeam, name, date, time, fee };
+    if (!allBooks.some(x => x.team == currentTeam && x.name == name && x.date == date)) {
+        allBooks.push(newBook);
+        set("allBookingHistory", allBooks);
+    }
+
+    set("weekBookingData_" + currentTeam, { name, date, time, fee });
+    loadWeekPlace();
+    refreshPlaceFilter();
+    alert("✅ 儲存成功！");
+}
+
+// === 🔥 載入場地選單 ===
+function refreshPlaceFilter() {
+    let allBooks = get("allBookingHistory");
+    let myPlaces = [...new Set(allBooks.filter(x => x.team == currentTeam).map(x => x.name))];
+    let sel = document.getElementById("fFilterPlace");
+    sel.innerHTML = `<option value="">全部場地</option>`;
+    myPlaces.forEach(p => sel.innerHTML += `<option value="${p}">${p}</option>`);
+}
+
+// === 🔥 本週報名 + 場地日期篩選 ===
+function renderWeek(){
+    let week = get("week_"+currentTeam);
+    let today = get("today_"+currentTeam);
+    let bookData = get("weekBookingData_" + currentTeam);
+
+    let kw = document.getElementById("fPlayer").value.toLowerCase();
+    let filterDate = document.getElementById("fFilterDate").value;
+    let filterPlace = document.getElementById("fFilterPlace").value;
+    let status = document.getElementById("fAttendStatus").value;
+    
+    let dom = document.getElementById("playerList");
+    dom.innerHTML = "";
+
+    week.forEach((n,i)=>{
+        let isAttend = today.includes(n);
+        let matchKw = n.toLowerCase().includes(kw);
+        let matchDate = !filterDate || (bookData.date == filterDate);
+        let matchPlace = !filterPlace || (bookData.name == filterPlace);
+        let matchSt = true;
+        if(status=="attended") matchSt=isAttend;
+        if(status=="notAttended") matchSt=!isAttend;
+
+        if(matchKw && matchDate && matchPlace && matchSt){
+            dom.innerHTML += `<div class="item">${n} ${isAttend?"✅已出席":""} <button class="del-btn" onclick="delWeek(${i})">刪</button></div>`;
+        }
+    });
+    updateStat();
+}
+
+function addWeekPlayer(){
+    let n=document.getElementById("selectUser").value;if(!n)return alert("選擇球員");
+    let list=get("week_"+currentTeam);if(list.includes(n))return alert("已報名");
+    list.push(n);set("week_"+currentTeam,list);renderWeek();
+}
+function delWeek(i){let list=get("week_"+currentTeam);list.splice(i,1);set("week_"+currentTeam,list);renderWeek();}
+function clearWeek(){if(!confirm("清空本週？"))return;set("week_"+currentTeam,[]);set("today_"+currentTeam,[]);renderWeek();renderAttend();}
+
+// === 出席 ===
+function renderAttend(){
+    let list=get("today_"+currentTeam);
+    let kw=document.getElementById("fAttend").value.toLowerCase();
+    let dom=document.getElementById("attendList");dom.innerHTML="";
+    
+    list.forEach(n=>{
+        let matchKw=n.toLowerCase().includes(kw);
+        if(matchKw)dom.innerHTML+=`<div class="item">${n}</div>`;
+    });
+    updateStat();
+}
+function addAttendance(){
+    let n=document.getElementById("selectAttend").value;if(!n)return alert("選擇球員");
+    let list=get("today_"+currentTeam);if(list.includes(n))return alert("已記錄");
+    list.push(n);set("today_"+currentTeam,list);
+    let hist=get("attend_"+currentTeam);hist.push({name:n,time:new Date().toLocaleDateString()});set("attend_"+currentTeam,hist);
+    renderAttend();
+}
+function delAttend(i){let list=get("today_"+currentTeam);list.splice(i,1);set("today_"+currentTeam,list);renderAttend();}
+function updateStat(){
+    let total=get("week_"+currentTeam).length;let attend=get("today_"+currentTeam).length;let rate=total>0?Math.round((attend/total)*100):0;
+    document.getElementById("total").innerText=total;document.getElementById("attend").innerText=attend;document.getElementById("rate").innerText=rate+"%";
+}
+
+// === 收支 ===
+function renderFinance(){
+    let list=get("finance_"+currentTeam);
+    let type=document.getElementById("fFinanceType").value;
+    let kw=document.getElementById("fFinanceText").value.toLowerCase();
+    let min=document.getElementById("fFinanceMin").value;
+    let max=document.getElementById("fFinanceMax").value;
+    let dom=document.getElementById("financeList");let bal=0;dom.innerHTML="";
+
+    list.forEach((it,i)=>{
+        let amt=Number(it.amount);
+        let matchT=type=="all"?true:(type=="in"?amt>0:amt<0);
+        let matchK=it.title.toLowerCase().includes(kw);
+        let matchMin=min==""||amt>=Number(min);
+        let matchMax=max==""||amt<=Number(max);
+        if(matchT&&matchK&&matchMin&&matchMax){
+            bal+=amt;
+            dom.innerHTML+=`<div class="item">${it.title} $${amt} <button class="del-btn" onclick="delFinance(${i})">刪</button></div>`;
+        }
+    });
+    document.getElementById("balance").innerText="$"+bal;
+}
+function addFinance(){
+    let t=document.getElementById("financeTitle").value.trim();let a=document.getElementById("financeAmount").value.trim();if(!t||!a)return alert("填寫完整");
+    let list=get("finance_"+currentTeam);list.push({title:t,amount:a,time:new Date().toISOString().split("T")[0]});set("finance_"+currentTeam,list);
+    document.getElementById("financeTitle").value="";document.getElementById("financeAmount").value="";renderFinance();
+}
+function delFinance(i){let list=get("finance_"+currentTeam);list.splice(i,1);set("finance_"+currentTeam,list);renderFinance();}
+
+// === 初始化 ===
+function initAll(){
+    renderTeam();
+    renderNotice();
+    renderUser();
+    loadWeekPlace();
+    refreshPlaceFilter();
+    renderWeek();
+    renderAttend();
+    renderFinance();
+    document.getElementById("fFinanceType").onchange=renderFinance;
+}
+window.onload=function(){
+    initAll();
+    document.getElementById("teamSelect").onchange=changeTeam;
+}
+</script>
+</body>
+</html>
